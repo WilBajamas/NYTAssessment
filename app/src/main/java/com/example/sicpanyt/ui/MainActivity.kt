@@ -1,18 +1,25 @@
 package com.example.sicpanyt.ui
 
 import android.Manifest
+import android.app.Activity
+import android.app.PendingIntent
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.LayoutInflater
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.example.sicpanyt.R
 import com.example.sicpanyt.databinding.ActivityMainBinding
 import com.example.sicpanyt.services.LocationService
+import com.google.android.gms.common.api.ResolvableApiException
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -24,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var locationService: LocationService
 
     private lateinit var locationPermissionRequest: ActivityResultLauncher<Array<String>>
+
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +46,19 @@ class MainActivity : AppCompatActivity() {
 
         locationService.initFusedLocationProvider(this)
         checkAndRequestLocationPermission()
+
+        requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.StartIntentSenderForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                GlobalScope.launch {
+                    delay(2000)
+                    startAccessingLocation()
+                }
+            } else {
+                binding.locationText.text = "Location disabled"
+            }
+        }
     }
 
     override fun onResume() {
@@ -85,7 +107,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLocationUpdates() {
-        locationService.startLocationUpdates {
+        locationService.startLocationUpdates(this,requestPermissionLauncher) {
             updateLocationText(location = it)
         }
     }

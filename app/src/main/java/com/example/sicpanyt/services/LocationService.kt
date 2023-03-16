@@ -1,0 +1,49 @@
+package com.example.sicpanyt.services
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.location.Location
+import android.os.Looper
+import com.google.android.gms.location.*
+
+class LocationService {
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationCallback: LocationCallback
+
+    fun initFusedLocationProvider (context: Context) {
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun startAccessingLocation(callback: ((Location?) -> Unit)?) {
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location ->
+                callback?.invoke(location)
+            }
+            .addOnFailureListener {
+                callback?.invoke(null)
+            }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun startLocationUpdates(callback: ((Location?) -> Unit)?) {
+        val locationRequest = LocationRequest.create().apply {
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                for (location in locationResult.locations) {
+                    callback?.invoke(location)
+                }
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper() )
+    }
+
+    fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+}
